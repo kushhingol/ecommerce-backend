@@ -2,6 +2,24 @@ const Order = require("../models/Order");
 const Product = require("../models/Product");
 const sendEmail = require("../utils/email");
 
+exports.getAllOrders = async (req, res) => {
+  try {
+    const orders = await Order.find();
+    res.status(200).json(orders);
+  } catch {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.getOrderById = async (req, res) => {
+  try {
+    const order = await Order.findById(req?.params?.orderId);
+    res.status(200).json(order);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 exports.placeOrder = async (req, res) => {
   const { productId, quantity, address } = req.body;
 

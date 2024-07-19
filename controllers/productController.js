@@ -2,6 +2,24 @@ const Product = require("../models/Product");
 const path = require("path");
 const fs = require("fs");
 
+exports.getProducts = async (req, res) => {
+  try {
+    const products = await Product.find();
+    res.status(200).json(products);
+  } catch {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
+exports.getProductById = async (req, res) => {
+  try {
+    const product = await Product.findById(req?.params?.productId);
+    res.status(200).json(product);
+  } catch (err) {
+    res.status(500).json({ message: "Server error" });
+  }
+};
+
 exports.addProduct = async (req, res) => {
   const { productName, description, price, category } = req.body;
   const productImage = req.file;

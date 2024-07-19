@@ -5,6 +5,14 @@ const authMiddleware = require("../middlewares/authMiddleware");
 const checkRole = require("../middlewares/checkRole");
 const upload = require("../middlewares/upload");
 
+router.get("/products", authMiddleware, productController.getProducts);
+
+router.get(
+  "/products/:productId",
+  authMiddleware,
+  productController.getProductById
+);
+
 router.post(
   "/products",
   authMiddleware,
