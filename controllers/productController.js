@@ -6,8 +6,8 @@ exports.getProducts = async (req, res) => {
   try {
     const products = await Product.find();
     res.status(200).json(products);
-  } catch {
-    res.status(500).json({ message: "Server error" });
+  } catch (err) {
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
 };
 
@@ -16,7 +16,7 @@ exports.getProductById = async (req, res) => {
     const product = await Product.findById(req?.params?.productId);
     res.status(200).json(product);
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
 };
 
@@ -50,7 +50,7 @@ exports.addProduct = async (req, res) => {
       productImageURL,
     });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
 };
 
@@ -96,7 +96,7 @@ exports.updateProduct = async (req, res) => {
       productImageURL: product.productImageURL,
     });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
 };
 
@@ -125,6 +125,6 @@ exports.deleteProduct = async (req, res) => {
     await product.remove();
     res.status(200).json({ message: "Product deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
 };

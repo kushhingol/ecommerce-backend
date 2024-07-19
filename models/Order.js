@@ -11,10 +11,22 @@ const OrderSchema = new mongoose.Schema({
   address: { type: String, required: true },
   status: {
     type: String,
-    enum: ["Order Placed", "Order Cancelled"],
+    enum: [
+      "Order Placed",
+      "Under Packaging",
+      "Dispatch",
+      "Delivered",
+      "Order Cancelled",
+    ],
     default: "Order Placed",
   },
   createdAt: { type: Date, default: Date.now },
+  statusHistory: [
+    {
+      status: { type: String, required: true },
+      timestamp: { type: Date, default: Date.now },
+    },
+  ],
 });
 
 module.exports = mongoose.model("Order", OrderSchema);

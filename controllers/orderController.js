@@ -1,13 +1,14 @@
 const Order = require("../models/Order");
 const Product = require("../models/Product");
 const sendEmail = require("../utils/email");
+const io = require("../config/socket");
 
 exports.getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find();
     res.status(200).json(orders);
-  } catch {
-    res.status(500).json({ message: "Server error" });
+  } catch (err) {
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
 };
 
@@ -16,7 +17,7 @@ exports.getOrderById = async (req, res) => {
     const order = await Order.findById(req?.params?.orderId);
     res.status(200).json(order);
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
 };
 
@@ -45,7 +46,7 @@ exports.placeOrder = async (req, res) => {
 
     res.status(201).json({ orderId: order._id, status: "Order Placed" });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
 };
 
@@ -72,6 +73,35 @@ exports.cancelOrder = async (req, res) => {
     );
 
     res.status(200).json({ orderId: order._id, status: "Order Cancelled" });
+  } catch (err) {
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
+  }
+};
+
+exports.updateOrderStatus = async (req, res) => {
+  const { orderId, status } = req.body;
+
+  try {
+    const order = await Order.findById(orderId);
+    if (!order) return res.status(404).json({ message: "Order not found" });
+
+    // Only allow certain status updates
+    const allowedStatuses = ["Under Packaging", "Dispatch", "Delivered"];
+    if (!allowedStatuses.includes(status)) {
+      return res.status(400).json({ message: "Invalid status update" });
+    }
+
+    order.status = status;
+    order.statusHistory.push({ status });
+    await order.save();
+
+    // Emit the updated status to subscribed users
+    io.to(order.userId.toString()).emit("orderStatusUpdate", {
+      orderId,
+      status,
+    });
+
+    res.status(200).json({ orderId: order._id, status });
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
