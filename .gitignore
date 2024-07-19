@@ -1,0 +1,34 @@
+# Node modules
+node_modules/
+
+# Environment variables
+.env
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Coverage directory
+coverage/
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+*.temp
+
+# Uploaded images
+uploads/
+
+# IDE specific files
+.idea/
+.vscode/
+.DS_Store
+
+# Jest snapshot directories
+__tests__/
+
+# OS generated files
+Thumbs.db
+.DS_Store
