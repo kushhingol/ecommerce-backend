@@ -12,7 +12,7 @@ exports.addUser = async (req, res) => {
     await user.save();
     res.status(200).json({ userId: user._id, username, email, userType });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
 };
 
@@ -35,7 +35,7 @@ exports.updateUser = async (req, res) => {
       userType: user.userType,
     });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
 };
 
@@ -48,7 +48,7 @@ exports.deleteUser = async (req, res) => {
     await user.remove();
     res.status(200).json({ message: "User deleted successfully" });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
 };
 
@@ -66,6 +66,6 @@ exports.loginUser = async (req, res) => {
     const token = generateToken(user);
     res.status(200).json({ token });
   } catch (err) {
-    res.status(500).json({ message: "Server error" });
+    res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
 };

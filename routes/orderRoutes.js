@@ -7,5 +7,6 @@ router.get("/orders", authMiddleware, orderController.getAllOrders);
 router.get("/orders/:orderId", authMiddleware, orderController.getOrderById);
 router.post("/orders", authMiddleware, orderController.placeOrder);
 router.put("/orders/cancel", authMiddleware, orderController.cancelOrder);
+router.put("/orders/status", authMiddleware, orderController.updateOrderStatus);
 
 module.exports = router;
