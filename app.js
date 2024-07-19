@@ -2,6 +2,7 @@ const express = require("express");
 const connectDB = require("./config/db");
 const userRoutes = require("./routes/userRoutes");
 const productRoutes = require("./routes/productRoutes");
+const orderRoutes = require("./routes/orderRoutes");
 const path = require("path");
 
 const app = express();
@@ -21,6 +22,7 @@ app.use(
 // Routes
 app.use("/api", userRoutes);
 app.use("/api", productRoutes);
+app.use("/api", orderRoutes);
 
 // Error handling middleware (optional)
 app.use((err, req, res, next) => {
