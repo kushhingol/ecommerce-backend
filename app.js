@@ -1,6 +1,8 @@
 const express = require("express");
 const connectDB = require("./config/db");
 const userRoutes = require("./routes/userRoutes");
+const productRoutes = require("./routes/productRoutes");
+const path = require("path");
 
 const app = express();
 
@@ -10,8 +12,15 @@ connectDB();
 // Middleware
 app.use(express.json());
 
+// Static folder for images
+app.use(
+  "/uploads/productImages",
+  express.static(path.join(__dirname, "uploads/productImages"))
+);
+
 // Routes
 app.use("/api", userRoutes);
+app.use("/api", productRoutes);
 
 // Error handling middleware (optional)
 app.use((err, req, res, next) => {
@@ -20,6 +29,4 @@ app.use((err, req, res, next) => {
 
 // Start server
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
