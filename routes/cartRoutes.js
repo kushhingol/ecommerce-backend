@@ -9,7 +9,11 @@ router.get(
   cartController.getCartDetailsByUserId
 );
 router.post("/cart", authMiddleware, cartController.addToCart);
-router.delete("/cart/:itemId", authMiddleware, cartController.removeFromCart);
-router.put("/cart/:itemId", authMiddleware, cartController.updateCart);
+router.delete(
+  "/cart/item/:itemId",
+  authMiddleware,
+  cartController.removeFromCart
+);
+router.put("/cart/item/:itemId", authMiddleware, cartController.updateCart);
 
 module.exports = router;
