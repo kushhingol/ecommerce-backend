@@ -1,66 +1,231 @@
-const request = require("supertest");
-const app = require("../app");
-const mongoose = require("mongoose");
-const User = require("../models/User");
 const Product = require("../models/Product");
 const path = require("path");
+const fs = require("fs");
+const {
+  getProducts,
+  getProductById,
+  addProduct,
+  updateProduct,
+  deleteProduct,
+} = require("../controllers/productController");
 
-beforeAll(async () => {
-  await mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
+// Mock the Product model
+jest.mock("../models/Product");
+
+// Mock the fs module functions
+jest.mock("fs");
+
+describe("Product Controller", () => {
+  let req, res, next;
+
+  beforeEach(() => {
+    req = {
+      body: {},
+      params: {},
+      file: {},
+      user: { _id: "userId" },
+    };
+    res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+    next = jest.fn();
   });
-});
 
-afterAll(async () => {
-  await mongoose.connection.close();
-});
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
-describe("Product Management", () => {
-  let token;
-  beforeAll(async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: "admin@example.com",
-      password: "password123",
+  describe("getProducts", () => {
+    it("should return all products", async () => {
+      const products = [{}, {}];
+      Product.find.mockResolvedValue(products);
+      await getProducts(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(products);
     });
-    token = res.body.token;
+
+    it("should handle server errors", async () => {
+      Product.find.mockRejectedValue(new Error("Server error"));
+      await getProducts(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
+      });
+    });
   });
 
-  it("should add a new product", async () => {
-    const res = await request(app)
-      .post("/api/products")
-      .set("Authorization", `Bearer ${token}`)
-      .field("productName", "Test Product")
-      .field("description", "Test Description")
-      .field("price", 100)
-      .field("category", "Test Category")
-      .attach("productImage", path.resolve(__dirname, "test-image.jpg"));
-    expect(res.statusCode).toEqual(201);
-    expect(res.body).toHaveProperty("productId");
+  describe("getProductById", () => {
+    it("should return a product by id", async () => {
+      const product = {};
+      Product.findById.mockResolvedValue(product);
+      req.params.productId = "productId";
+      await getProductById(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(product);
+    });
+
+    it("should handle server errors", async () => {
+      Product.findById.mockRejectedValue(new Error("Server error"));
+      req.params.productId = "productId";
+      await getProductById(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
+      });
+    });
   });
 
-  it("should update a product", async () => {
-    const product = await Product.findOne({ productName: "Test Product" });
-    const res = await request(app)
-      .put(`/api/products/${product._id.toString()}`)
-      .set("Authorization", `Bearer ${token}`)
-      .field("productId", product._id.toString())
-      .field("productName", "Updated Product")
-      .field("description", "Updated Description")
-      .field("price", 200)
-      .field("category", "Updated Category")
-      .attach("productImage", path.resolve(__dirname, "test-image.jpg"));
-    expect(res.statusCode).toEqual(200);
-    expect(res.body).toHaveProperty("productId", product._id.toString());
+  describe("addProduct", () => {
+    it("should create a new product and return 201", async () => {
+      req.body = {
+        productName: "testProduct",
+        description: "testDescription",
+        price: 100,
+        category: "testCategory",
+      };
+      req.file = { filename: "testImage.jpg" };
+      const product = {};
+      Product.prototype.save = jest.fn().mockResolvedValue(product);
+
+      await addProduct(req, res, next);
+
+      expect(Product.prototype.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({
+        productName: "testProduct",
+        description: "testDescription",
+        price: 100,
+        category: "testCategory",
+        productImageURL: "/uploads/productImages/testImage.jpg",
+      });
+    });
+
+    it("should handle server errors", async () => {
+      req.file = { filename: "testImage.jpg" };
+      Product.prototype.save = jest
+        .fn()
+        .mockRejectedValue(new Error("Server error"));
+
+      await addProduct(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
+      });
+    });
   });
 
-  it("should delete a product", async () => {
-    const product = await Product.findOne({ productName: "Updated Product" });
-    const res = await request(app)
-      .delete(`/api/products/${product._id.toString()}`)
-      .set("Authorization", `Bearer ${token}`)
-      .send({ productId: product._id.toString() });
-    expect(res.statusCode).toEqual(200);
-    expect(res.body).toHaveProperty("message", "Product deleted successfully");
+  describe("updateProduct", () => {
+    it("should return 404 if product is not found", async () => {
+      Product.findById.mockResolvedValue(null);
+      req.params.productId = "productId";
+      await updateProduct(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ message: "Product not found" });
+    });
+
+    it("should return 403 if user is not the creator of the product", async () => {
+      const product = { createdBy: "anotherUserId" };
+      Product.findById.mockResolvedValue(product);
+      req.params.productId = "productId";
+      await updateProduct(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({ message: "Access denied" });
+    });
+
+    it("should update the product and return 200", async () => {
+      const product = {
+        save: jest.fn().mockResolvedValue({}),
+        createdBy: "userId",
+        productName: "oldProduct",
+        description: "oldDescription",
+        price: 100,
+        category: "oldCategory",
+        productImageURL: "/uploads/productImages/oldImage.jpg",
+      };
+      Product.findById.mockResolvedValue(product);
+      req.params.productId = "productId";
+      req.body = {
+        productName: "newProduct",
+        description: "newDescription",
+        price: 200,
+        category: "newCategory",
+      };
+      req.file = { filename: "newImage.jpg" };
+      fs.existsSync.mockReturnValue(true);
+      fs.unlinkSync.mockReturnValue();
+
+      await updateProduct(req, res, next);
+
+      expect(product.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        productName: "newProduct",
+        description: "newDescription",
+        price: 200,
+        category: "newCategory",
+        productImageURL: "/uploads/productImages/newImage.jpg",
+      });
+    });
+
+    it("should handle server errors", async () => {
+      Product.findById.mockRejectedValue(new Error("Server error"));
+      req.params.productId = "productId";
+      await updateProduct(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
+      });
+    });
+  });
+
+  describe("deleteProduct", () => {
+    it("should return 404 if product is not found", async () => {
+      Product.findById.mockResolvedValue(null);
+      req.params.productId = "productId";
+      await deleteProduct(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ message: "Product not found" });
+    });
+
+    it("should return 403 if user is not the creator of the product", async () => {
+      const product = { createdBy: "anotherUserId" };
+      Product.findById.mockResolvedValue(product);
+      req.params.productId = "productId";
+      await deleteProduct(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({ message: "Access denied" });
+    });
+
+    it("should delete the product and return 200", async () => {
+      const product = {
+        remove: jest.fn().mockResolvedValue({}),
+        createdBy: "userId",
+        productImageURL: "/uploads/productImages/oldImage.jpg",
+      };
+      Product.findById.mockResolvedValue(product);
+      req.params.productId = "productId";
+      fs.existsSync.mockReturnValue(true);
+      fs.unlinkSync.mockReturnValue();
+
+      await deleteProduct(req, res, next);
+
+      expect(product.remove).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Product deleted successfully",
+      });
+    });
+
+    it("should handle server errors", async () => {
+      Product.findById.mockRejectedValue(new Error("Server error"));
+      req.params.productId = "productId";
+      await deleteProduct(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
+      });
+    });
   });
 });
