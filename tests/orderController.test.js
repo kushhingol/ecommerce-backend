@@ -1,134 +1,180 @@
-const request = require("supertest");
-const app = require("../app");
-const mongoose = require("mongoose");
-const User = require("../models/User");
-const Product = require("../models/Product");
 const Order = require("../models/Order");
+const Product = require("../models/Product");
+const sendEmail = require("../utils/email");
+const io = require("../config/socket");
+const {
+  getAllOrders,
+  getOrderById,
+  placeOrder,
+  cancelOrder,
+} = require("../controllers/orderController");
 
-beforeAll(async () => {
-  await mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
+// Mock the Order and Product models and other dependencies
+jest.mock("../models/Order");
+jest.mock("../models/Product");
+jest.mock("../utils/email");
+
+describe("Order Controller", () => {
+  let req, res, next;
+
+  beforeEach(() => {
+    req = {
+      body: {},
+      params: {},
+      user: { _id: "userId", email: "test@example.com" },
+    };
+    res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+    next = jest.fn();
   });
-});
 
-afterAll(async () => {
-  await mongoose.connection.close();
-});
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
-describe("Order Management", () => {
-  let token;
-  let productId;
-  beforeAll(async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: "buyer@example.com",
-      password: "password123",
+  describe("getAllOrders", () => {
+    it("should return all orders", async () => {
+      const orders = [{}, {}];
+      Order.find.mockResolvedValue(orders);
+      await getAllOrders(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(orders);
     });
-    token = res.body.token;
 
-    const productRes = await request(app)
-      .post("/api/products")
-      .set("Authorization", `Bearer ${token}`)
-      .field("productName", "Test Product")
-      .field("description", "Test Description")
-      .field("price", 100)
-      .field("category", "Test Category")
-      .attach("productImage", path.resolve(__dirname, "test-image.jpg"));
-
-    productId = productRes.body.productId;
+    it("should handle server errors", async () => {
+      Order.find.mockRejectedValue(new Error("Server error"));
+      await getAllOrders(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
+      });
+    });
   });
 
-  it("should place an order", async () => {
-    const res = await request(app)
-      .post("/api/orders")
-      .set("Authorization", `Bearer ${token}`)
-      .send({
-        productId,
+  describe("getOrderById", () => {
+    it("should return an order by id", async () => {
+      const order = {};
+      Order.findById.mockResolvedValue(order);
+      req.params.orderId = "orderId";
+      await getOrderById(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith(order);
+    });
+
+    it("should handle server errors", async () => {
+      Order.findById.mockRejectedValue(new Error("Server error"));
+      req.params.orderId = "orderId";
+      await getOrderById(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
+      });
+    });
+  });
+
+  describe("placeOrder", () => {
+    it("should return 404 if product is not found", async () => {
+      Product.findById.mockResolvedValue(null);
+      req.body.productId = "productId";
+      await placeOrder(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ message: "Product not found" });
+    });
+
+    it("should create a new order and return 201", async () => {
+      const product = { productName: "testProduct" };
+      Product.findById.mockResolvedValue(product);
+      req.body = {
+        productId: "productId",
         quantity: 1,
-        address: "123 Test St",
+        address: "testAddress",
+      };
+      const order = {
+        save: jest.fn().mockResolvedValue({}),
+        _id: "orderId",
+      };
+      Order.mockImplementation(() => order);
+
+      await placeOrder(req, res, next);
+
+      expect(order.save).toHaveBeenCalled();
+      expect(sendEmail).toHaveBeenCalledWith(
+        "test@example.com",
+        "Order Confirmation",
+        "Your order for testProduct has been placed."
+      );
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({
+        orderId: "orderId",
+        status: "Order Placed",
       });
-    expect(res.statusCode).toEqual(201);
-    expect(res.body).toHaveProperty("orderId");
-    expect(res.body).toHaveProperty("status", "Order Placed");
-  });
-
-  it("should cancel an order", async () => {
-    const order = await Order.findOne({ userId: req.user._id });
-    const res = await request(app)
-      .put("/api/orders/cancel")
-      .set("Authorization", `Bearer ${token}`)
-      .send({ orderId: order._id.toString() });
-    expect(res.statusCode).toEqual(200);
-    expect(res.body).toHaveProperty("orderId", order._id.toString());
-    expect(res.body).toHaveProperty("status", "Order Cancelled");
-  });
-});
-
-describe("Order Status Updates", () => {
-  let token;
-  let productId;
-  let orderId;
-  let clientSocket;
-
-  beforeAll(async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: "buyer@example.com",
-      password: "password123",
-    });
-    token = res.body.token;
-
-    const productRes = await request(app)
-      .post("/api/products")
-      .set("Authorization", `Bearer ${token}`)
-      .field("productName", "Test Product")
-      .field("description", "Test Description")
-      .field("price", 100)
-      .field("category", "Test Category")
-      .attach("productImage", path.resolve(__dirname, "test-image.jpg"));
-
-    productId = productRes.body.productId;
-
-    const orderRes = await request(app)
-      .post("/api/orders")
-      .set("Authorization", `Bearer ${token}`)
-      .send({
-        productId,
-        quantity: 1,
-        address: "123 Test St",
-      });
-
-    orderId = orderRes.body.orderId;
-
-    clientSocket = io.connect(`http://localhost:3000`, {
-      "reconnection delay": 0,
-      "reopen delay": 0,
-      "force new connection": true,
-      transports: ["websocket"],
     });
 
-    clientSocket.emit("subscribeToOrder", orderId, res.body.userId);
+    it("should handle server errors", async () => {
+      Product.findById.mockRejectedValue(new Error("Server error"));
+      req.body.productId = "productId";
+      await placeOrder(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
+      });
+    });
   });
 
-  afterAll((done) => {
-    if (clientSocket.connected) {
-      clientSocket.disconnect();
-    }
-    done();
-  });
-
-  it("should receive real-time order status updates", (done) => {
-    clientSocket.on("orderStatusUpdate", (data) => {
-      expect(data).toHaveProperty("orderId", orderId);
-      expect(data).toHaveProperty("status", "Dispatch");
-      done();
+  describe("cancelOrder", () => {
+    it("should return 404 if order is not found", async () => {
+      Order.findById.mockResolvedValue(null);
+      req.body.orderId = "orderId";
+      await cancelOrder(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ message: "Order not found" });
     });
 
-    request(app)
-      .put("/api/orders/status")
-      .set("Authorization", `Bearer ${token}`)
-      .send({ orderId, status: "Dispatch" })
-      .end((err, res) => {
-        if (err) return done(err);
+    it("should return 403 if user is not the owner of the order", async () => {
+      const order = { userId: "anotherUserId" };
+      Order.findById.mockResolvedValue(order);
+      req.body.orderId = "orderId";
+      await cancelOrder(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(403);
+      expect(res.json).toHaveBeenCalledWith({ message: "Access denied" });
+    });
+
+    it("should cancel the order and return 200", async () => {
+      const order = {
+        userId: "userId",
+        productId: "productId",
+        save: jest.fn().mockResolvedValue({}),
+      };
+      Order.findById.mockResolvedValue(order);
+      const product = { productName: "testProduct" };
+      Product.findById.mockResolvedValue(product);
+      req.body.orderId = "orderId";
+
+      await cancelOrder(req, res, next);
+
+      expect(order.save).toHaveBeenCalled();
+      expect(sendEmail).toHaveBeenCalledWith(
+        "test@example.com",
+        "Order Cancellation",
+        "Your order for testProduct has been cancelled."
+      );
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        orderId: order._id,
+        status: "Order Cancelled",
       });
+    });
+
+    it("should handle server errors", async () => {
+      Order.findById.mockRejectedValue(new Error("Server error"));
+      req.body.orderId = "orderId";
+      await cancelOrder(req, res, next);
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
+      });
+    });
   });
 });

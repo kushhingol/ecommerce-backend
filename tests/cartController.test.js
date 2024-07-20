@@ -1,78 +1,203 @@
-const request = require("supertest");
-const app = require("../app");
-const mongoose = require("mongoose");
-const User = require("../models/User");
-const Product = require("../models/Product");
 const Cart = require("../models/Cart");
+const Product = require("../models/Product");
+const {
+  getCartDetailsByUserId,
+  addToCart,
+  removeFromCart,
+  updateCart,
+} = require("../controllers/cartController");
 
-beforeAll(async () => {
-  await mongoose.connect(process.env.MONGODB_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
+// Mock the Cart and Product models
+jest.mock("../models/Cart");
+jest.mock("../models/Product");
+
+describe("Cart Controller", () => {
+  let req, res, next;
+
+  beforeEach(() => {
+    req = {
+      body: {},
+      params: {},
+      user: { _id: "userId" },
+    };
+    res = {
+      status: jest.fn().mockReturnThis(),
+      json: jest.fn(),
+    };
+    next = jest.fn();
   });
-});
 
-afterAll(async () => {
-  await mongoose.connection.close();
-});
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
 
-describe("Cart Management", () => {
-  let token;
-  let productId;
-  beforeAll(async () => {
-    const res = await request(app).post("/api/auth/login").send({
-      email: "buyer@example.com",
-      password: "password123",
+  describe("getCartDetailsByUserId", () => {
+    it("should return cart details for a user", async () => {
+      const cart = { _id: "cartId", items: [] };
+      Cart.findOne.mockResolvedValue(cart);
+      req.params.userId = "userId";
+
+      await getCartDetailsByUserId(req, res, next);
+
+      expect(Cart.findOne).toHaveBeenCalledWith({ userId: "userId" });
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({ cartId: "cartId", items: [] });
     });
-    token = res.body.token;
 
-    const productRes = await request(app)
-      .post("/api/products")
-      .set("Authorization", `Bearer ${token}`)
-      .field("productName", "Test Product")
-      .field("description", "Test Description")
-      .field("price", 100)
-      .field("category", "Test Category")
-      .attach("productImage", path.resolve(__dirname, "test-image.jpg"));
+    it("should handle server errors", async () => {
+      Cart.findOne.mockRejectedValue(new Error("Server error"));
 
-    productId = productRes.body.productId;
-  });
+      await getCartDetailsByUserId(req, res, next);
 
-  it("should add an item to the cart", async () => {
-    const res = await request(app)
-      .post("/api/cart")
-      .set("Authorization", `Bearer ${token}`)
-      .send({
-        productId,
-        quantity: 1,
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
       });
-    expect(res.statusCode).toEqual(201);
-    expect(res.body).toHaveProperty("cartId");
-    expect(res.body.items).toHaveLength(1);
+    });
   });
 
-  it("should update item quantity in the cart", async () => {
-    const cart = await Cart.findOne({ userId: req.user._id });
-    const item = cart.items[0];
-    const res = await request(app)
-      .put("/api/cart")
-      .set("Authorization", `Bearer ${token}`)
-      .send({
-        itemId: item._id.toString(),
-        quantity: 3,
+  describe("addToCart", () => {
+    it("should return 404 if product is not found", async () => {
+      Product.findById.mockResolvedValue(null);
+      req.body = { productId: "productId", quantity: 1 };
+
+      await addToCart(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ message: "Product not found" });
+    });
+
+    it("should add a new item to the cart", async () => {
+      const product = { _id: "productId" };
+      const cart = {
+        userId: "userId",
+        items: [],
+        save: jest.fn().mockResolvedValue({}),
+      };
+      Product.findById.mockResolvedValue(product);
+      Cart.findOne.mockResolvedValue(cart);
+      req.body = { productId: "productId", quantity: 1 };
+
+      await addToCart(req, res, next);
+
+      expect(Cart.findOne).toHaveBeenCalledWith({ userId: "userId" });
+      expect(cart.items.length).toBe(1);
+      expect(cart.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(201);
+      expect(res.json).toHaveBeenCalledWith({
+        cartId: cart._id,
+        items: cart.items,
       });
-    expect(res.statusCode).toEqual(200);
-    expect(res.body.items[0].quantity).toEqual(3);
+    });
+
+    it("should handle server errors", async () => {
+      Product.findById.mockRejectedValue(new Error("Server error"));
+
+      await addToCart(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
+      });
+    });
   });
 
-  it("should remove an item from the cart", async () => {
-    const cart = await Cart.findOne({ userId: req.user._id });
-    const item = cart.items[0];
-    const res = await request(app)
-      .delete("/api/cart")
-      .set("Authorization", `Bearer ${token}`)
-      .send({ itemId: item._id.toString() });
-    expect(res.statusCode).toEqual(200);
-    expect(res.body).toHaveProperty("message", "Item removed from cart");
+  describe("removeFromCart", () => {
+    it("should return 404 if cart is not found", async () => {
+      Cart.findOne.mockResolvedValue(null);
+      req.body.itemId = "itemId";
+
+      await removeFromCart(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ message: "Cart not found" });
+    });
+
+    it("should remove an item from the cart", async () => {
+      const cart = {
+        userId: "userId",
+        items: [{ _id: "itemId" }],
+        save: jest.fn().mockResolvedValue({}),
+      };
+      Cart.findOne.mockResolvedValue(cart);
+      req.body.itemId = "itemId";
+
+      await removeFromCart(req, res, next);
+
+      expect(Cart.findOne).toHaveBeenCalledWith({ userId: "userId" });
+      expect(cart.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Item removed from cart",
+      });
+    });
+
+    it("should handle server errors", async () => {
+      Cart.findOne.mockRejectedValue(new Error("Server error"));
+
+      await removeFromCart(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
+      });
+    });
+  });
+
+  describe("updateCart", () => {
+    it("should return 404 if cart is not found", async () => {
+      Cart.findOne.mockResolvedValue(null);
+      req.body = { itemId: "itemId", quantity: 1 };
+
+      await updateCart(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({ message: "Cart not found" });
+    });
+
+    it("should return 404 if item is not found in the cart", async () => {
+      const cart = { items: [], save: jest.fn() };
+      Cart.findOne.mockResolvedValue(cart);
+      req.body = { itemId: "itemId", quantity: 1 };
+
+      await updateCart(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(404);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Item not found in cart",
+      });
+    });
+
+    it("should update the quantity of an item in the cart", async () => {
+      const cart = {
+        userId: "userId",
+        items: [{ _id: "itemId", quantity: 1 }],
+        save: jest.fn().mockResolvedValue({}),
+      };
+      Cart.findOne.mockResolvedValue(cart);
+      req.body = { itemId: "itemId", quantity: 2 };
+
+      await updateCart(req, res, next);
+
+      expect(Cart.findOne).toHaveBeenCalledWith({ userId: "userId" });
+      expect(cart.items[0].quantity).toBe(2);
+      expect(cart.save).toHaveBeenCalled();
+      expect(res.status).toHaveBeenCalledWith(200);
+      expect(res.json).toHaveBeenCalledWith({
+        cartId: cart._id,
+        items: cart.items,
+      });
+    });
+
+    it("should handle server errors", async () => {
+      Cart.findOne.mockRejectedValue(new Error("Server error"));
+
+      await updateCart(req, res, next);
+
+      expect(res.status).toHaveBeenCalledWith(500);
+      expect(res.json).toHaveBeenCalledWith({
+        message: "Server error. Error Details: Error: Server error",
+      });
+    });
   });
 });
