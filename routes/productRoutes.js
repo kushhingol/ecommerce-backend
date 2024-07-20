@@ -1,37 +1,34 @@
 const express = require("express");
 const router = express.Router();
-const productController = require("../controllers/productController");
+const {
+  addProduct,
+  deleteProduct,
+  getProductById,
+  getProducts,
+  updateProduct,
+} = require("../controllers/productController");
 const authMiddleware = require("../middlewares/authMiddleware");
 const checkRole = require("../middlewares/checkRole");
 const upload = require("../middlewares/upload");
 
-router.get("/products", authMiddleware, productController.getProducts);
+router.get("/products", authMiddleware, getProducts);
 
-router.get(
-  "/products/:productId",
-  authMiddleware,
-  productController.getProductById
-);
+router.get("/products/:productId", authMiddleware, getProductById);
 
 router.post(
   "/products",
   authMiddleware,
   checkRole,
   upload.single("productImage"),
-  productController.addProduct
+  addProduct
 );
 router.put(
   "/products/:productId",
   authMiddleware,
   checkRole,
   upload.single("productImage"),
-  productController.updateProduct
+  updateProduct
 );
-router.delete(
-  "/products/:productId",
-  authMiddleware,
-  checkRole,
-  productController.deleteProduct
-);
+router.delete("/products/:productId", authMiddleware, checkRole, deleteProduct);
 
 module.exports = router;

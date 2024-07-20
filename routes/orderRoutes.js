@@ -1,12 +1,18 @@
 const express = require("express");
 const router = express.Router();
-const orderController = require("../controllers/orderController");
+const {
+  cancelOrder,
+  getAllOrders,
+  getOrderById,
+  placeOrder,
+  updateOrderStatus,
+} = require("../controllers/orderController");
 const authMiddleware = require("../middlewares/authMiddleware");
 
-router.get("/orders", authMiddleware, orderController.getAllOrders);
-router.get("/orders/:orderId", authMiddleware, orderController.getOrderById);
-router.post("/orders", authMiddleware, orderController.placeOrder);
-router.put("/orders/cancel", authMiddleware, orderController.cancelOrder);
-router.put("/orders/status", authMiddleware, orderController.updateOrderStatus);
+router.get("/orders", authMiddleware, getAllOrders);
+router.get("/orders/:orderId", authMiddleware, getOrderById);
+router.post("/orders", authMiddleware, placeOrder);
+router.put("/orders/cancel", authMiddleware, cancelOrder);
+router.put("/orders/status", authMiddleware, updateOrderStatus);
 
 module.exports = router;
