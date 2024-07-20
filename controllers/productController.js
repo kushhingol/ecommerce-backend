@@ -2,7 +2,7 @@ const Product = require("../models/Product");
 const path = require("path");
 const fs = require("fs");
 
-exports.getProducts = async (req, res) => {
+const getProducts = async (req, res) => {
   try {
     const products = await Product.find();
     res.status(200).json(products);
@@ -11,7 +11,7 @@ exports.getProducts = async (req, res) => {
   }
 };
 
-exports.getProductById = async (req, res) => {
+const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req?.params?.productId);
     res.status(200).json(product);
@@ -20,7 +20,7 @@ exports.getProductById = async (req, res) => {
   }
 };
 
-exports.addProduct = async (req, res) => {
+const addProduct = async (req, res) => {
   const { productName, description, price, category } = req.body;
   const productImage = req.file;
 
@@ -54,7 +54,7 @@ exports.addProduct = async (req, res) => {
   }
 };
 
-exports.updateProduct = async (req, res) => {
+const updateProduct = async (req, res) => {
   const { productId, productName, description, price, category } = req.body;
   const productImage = req.file;
 
@@ -100,7 +100,7 @@ exports.updateProduct = async (req, res) => {
   }
 };
 
-exports.deleteProduct = async (req, res) => {
+const deleteProduct = async (req, res) => {
   const { productId } = req.body;
 
   try {
@@ -127,4 +127,12 @@ exports.deleteProduct = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
+};
+
+module.exports = {
+  getProducts,
+  getProductById,
+  addProduct,
+  updateProduct,
+  deleteProduct,
 };

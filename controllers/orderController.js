@@ -3,7 +3,7 @@ const Product = require("../models/Product");
 const sendEmail = require("../utils/email");
 const io = require("../config/socket");
 
-exports.getAllOrders = async (req, res) => {
+const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find();
     res.status(200).json(orders);
@@ -12,7 +12,7 @@ exports.getAllOrders = async (req, res) => {
   }
 };
 
-exports.getOrderById = async (req, res) => {
+const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req?.params?.orderId);
     res.status(200).json(order);
@@ -21,7 +21,7 @@ exports.getOrderById = async (req, res) => {
   }
 };
 
-exports.placeOrder = async (req, res) => {
+const placeOrder = async (req, res) => {
   const { productId, quantity, address } = req.body;
 
   try {
@@ -50,7 +50,7 @@ exports.placeOrder = async (req, res) => {
   }
 };
 
-exports.cancelOrder = async (req, res) => {
+const cancelOrder = async (req, res) => {
   const { orderId } = req.body;
 
   try {
@@ -78,7 +78,7 @@ exports.cancelOrder = async (req, res) => {
   }
 };
 
-exports.updateOrderStatus = async (req, res) => {
+const updateOrderStatus = async (req, res) => {
   const { orderId, status } = req.body;
 
   try {
@@ -105,4 +105,12 @@ exports.updateOrderStatus = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: "Server error" });
   }
+};
+
+module.exports = {
+  getAllOrders,
+  getOrderById,
+  placeOrder,
+  cancelOrder,
+  updateOrderStatus,
 };
