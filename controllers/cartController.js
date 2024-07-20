@@ -1,7 +1,7 @@
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 
-exports.getCartDetailsByUserId = async (req, res) => {
+const getCartDetailsByUserId = async (req, res) => {
   try {
     let cart = await Cart.findOne({ userId: req?.params?.userId });
     res.status(200).json({ cartId: cart._id, items: cart.items });
@@ -10,7 +10,7 @@ exports.getCartDetailsByUserId = async (req, res) => {
   }
 };
 
-exports.addToCart = async (req, res) => {
+const addToCart = async (req, res) => {
   const { productId, quantity } = req.body;
 
   try {
@@ -38,7 +38,7 @@ exports.addToCart = async (req, res) => {
   }
 };
 
-exports.removeFromCart = async (req, res) => {
+const removeFromCart = async (req, res) => {
   const { itemId } = req.body;
 
   try {
@@ -58,7 +58,7 @@ exports.removeFromCart = async (req, res) => {
   }
 };
 
-exports.updateCart = async (req, res) => {
+const updateCart = async (req, res) => {
   const { itemId, quantity } = req.body;
 
   try {
@@ -80,4 +80,11 @@ exports.updateCart = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
+};
+
+module.exports = {
+  getCartDetailsByUserId,
+  addToCart,
+  removeFromCart,
+  updateCart,
 };

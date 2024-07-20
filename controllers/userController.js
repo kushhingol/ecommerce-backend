@@ -1,7 +1,7 @@
 const User = require("../models/User");
 const { generateToken } = require("../config/auth");
 
-exports.addUser = async (req, res) => {
+const addUser = async (req, res) => {
   const { username, password, email, userType } = req.body;
 
   try {
@@ -16,7 +16,7 @@ exports.addUser = async (req, res) => {
   }
 };
 
-exports.updateUser = async (req, res) => {
+const updateUser = async (req, res) => {
   const { username, email, userType } = req.body;
 
   try {
@@ -39,7 +39,7 @@ exports.updateUser = async (req, res) => {
   }
 };
 
-exports.deleteUser = async (req, res) => {
+const deleteUser = async (req, res) => {
   try {
     console.log(req);
     const user = await User.findById(req?.user?._id);
@@ -52,7 +52,7 @@ exports.deleteUser = async (req, res) => {
   }
 };
 
-exports.loginUser = async (req, res) => {
+const loginUser = async (req, res) => {
   const { email, password } = req.body;
 
   try {
@@ -68,4 +68,11 @@ exports.loginUser = async (req, res) => {
   } catch (err) {
     res.status(500).json({ message: `Server error. Error Details: ${err}` });
   }
+};
+
+module.exports = {
+  addUser,
+  updateUser,
+  deleteUser,
+  loginUser,
 };
