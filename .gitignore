@@ -18,8 +18,7 @@ temp/
 *.tmp
 *.temp
 
-# Uploaded images
-uploads/
+
 
 # IDE specific files
 .idea/
