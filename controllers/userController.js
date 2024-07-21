@@ -1,6 +1,11 @@
 const User = require("../models/User");
 const { generateToken } = require("../config/auth");
 
+/**
+ * @desc: Add a user
+ * @route POST /api/users
+ * @access Public
+ */
 const addUser = async (req, res) => {
   const { username, password, email, userType } = req.body;
 
@@ -16,6 +21,11 @@ const addUser = async (req, res) => {
   }
 };
 
+/**
+ * @desc: Update a user
+ * @route PUT /api/users/:userID
+ * @access Private
+ */
 const updateUser = async (req, res) => {
   const { username, email, userType } = req.body;
 
@@ -39,6 +49,11 @@ const updateUser = async (req, res) => {
   }
 };
 
+/**
+ * @desc: Delete a user
+ * @route DELETE /api/users/:userID
+ * @access Private
+ */
 const deleteUser = async (req, res) => {
   try {
     const user = await User.findById(req?.user?._id);
@@ -51,6 +66,11 @@ const deleteUser = async (req, res) => {
   }
 };
 
+/**
+ * @desc: Login a user
+ * @route POST /api/auth/login
+ * @access Public
+ */
 const loginUser = async (req, res) => {
   const { email, password } = req.body;
 

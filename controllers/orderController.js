@@ -3,6 +3,11 @@ const Product = require("../models/Product");
 const sendEmail = require("../utils/email");
 const io = require("../config/socket");
 
+/**
+ * @desc: Get Products
+ * @route GET /api/orders
+ * @access Private
+ */
 const getAllOrders = async (req, res) => {
   try {
     const orders = await Order.find();
@@ -12,6 +17,11 @@ const getAllOrders = async (req, res) => {
   }
 };
 
+/**
+ * @desc: Get Products by Id
+ * @route GET /api/orders/:orderId
+ * @access Private
+ */
 const getOrderById = async (req, res) => {
   try {
     const order = await Order.findById(req?.params?.orderId);
@@ -21,6 +31,11 @@ const getOrderById = async (req, res) => {
   }
 };
 
+/**
+ * @desc: Place order
+ * @route POST /api/orders
+ * @access Private
+ */
 const placeOrder = async (req, res) => {
   const { productId, quantity, address } = req.body;
 
@@ -50,6 +65,11 @@ const placeOrder = async (req, res) => {
   }
 };
 
+/**
+ * @desc: Cancel order
+ * @route PUT /api/orders/cancel
+ * @access Private
+ */
 const cancelOrder = async (req, res) => {
   const { orderId } = req.body;
 
@@ -78,6 +98,11 @@ const cancelOrder = async (req, res) => {
   }
 };
 
+/**
+ * @desc: update Order status
+ * @route PUT /api/orders/status
+ * @access Private
+ */
 const updateOrderStatus = async (req, res) => {
   const { orderId, status } = req.body;
 

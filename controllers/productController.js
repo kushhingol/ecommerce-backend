@@ -2,6 +2,11 @@ const Product = require("../models/Product");
 const path = require("path");
 const fs = require("fs");
 
+/**
+ * @desc: Get Products
+ * @route GET /api/products
+ * @access Private
+ */
 const getProducts = async (req, res) => {
   try {
     const products = await Product.find();
@@ -11,6 +16,11 @@ const getProducts = async (req, res) => {
   }
 };
 
+/**
+ * @desc: Get Product by id
+ * @route GET /api/products/:productId
+ * @access Private
+ */
 const getProductById = async (req, res) => {
   try {
     const product = await Product.findById(req?.params?.productId);
@@ -20,6 +30,11 @@ const getProductById = async (req, res) => {
   }
 };
 
+/**
+ * @desc: Add a product
+ * @route POST /api/products
+ * @access Private
+ */
 const addProduct = async (req, res) => {
   const { productName, description, price, category } = req.body;
   const productImage = req.file;
@@ -54,6 +69,11 @@ const addProduct = async (req, res) => {
   }
 };
 
+/**
+ * @desc: Update Product by id
+ * @route POST /api/products/:productId
+ * @access Private
+ */
 const updateProduct = async (req, res) => {
   const { productId, productName, description, price, category } = req.body;
   const productImage = req.file;
@@ -100,6 +120,11 @@ const updateProduct = async (req, res) => {
   }
 };
 
+/**
+ * @desc: Delete Product by id
+ * @route DELETE /api/products/:productId
+ * @access Private
+ */
 const deleteProduct = async (req, res) => {
   const { productId } = req.body;
 

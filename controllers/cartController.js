@@ -1,6 +1,11 @@
 const Cart = require("../models/Cart");
 const Product = require("../models/Product");
 
+/**
+ * @desc: Get Cart details by user id
+ * @route GET /api/cart/user/:userId
+ * @access Private
+ */
 const getCartDetailsByUserId = async (req, res) => {
   try {
     let cart = await Cart.findOne({ userId: req?.params?.userId });
@@ -10,6 +15,11 @@ const getCartDetailsByUserId = async (req, res) => {
   }
 };
 
+/**
+ * @desc: Add to cart
+ * @route GET /api/cart
+ * @access Private
+ */
 const addToCart = async (req, res) => {
   const { productId, quantity } = req.body;
 
@@ -38,6 +48,11 @@ const addToCart = async (req, res) => {
   }
 };
 
+/**
+ * @desc: Remove from cart
+ * @route GET /cart/item/:itemId
+ * @access Private
+ */
 const removeFromCart = async (req, res) => {
   const { itemId } = req.body;
 
@@ -58,6 +73,11 @@ const removeFromCart = async (req, res) => {
   }
 };
 
+/**
+ * @desc: update from cart
+ * @route GET /cart/item/:itemId
+ * @access Private
+ */
 const updateCart = async (req, res) => {
   const { itemId, quantity } = req.body;
 
